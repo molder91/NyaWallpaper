@@ -1,90 +1,84 @@
-import { Search, Filter, X } from 'lucide-react'
-import { useState } from 'react'
+import { Search, Filter, X, Loader2 } from 'lucide-react'
+import { useState, useEffect } from 'react'
+import { useDispatch, useSelector } from 'react-redux'
 import WallpaperCard from '../components/wallpaper-card'
 import { useWallpaper } from '../hooks/useWallpaper'
 import { Button } from '../components/ui/button'
 import { Popover, PopoverContent, PopoverTrigger } from '../components/ui/popover'
 import { Tabs, TabsList, TabsTrigger } from '../components/ui/tabs'
+import { fetchWallpapers, fetchRandomWallpapers, fetchTopWallpapers, setSearchQuery, setFilters, setPage } from '../store/wallpaperSlice'
+import { RootState, AppDispatch } from '../store'
+import { WallpaperSource } from '../types/wallpaper'
 
 export function Home() {
-  const { favorites } = useWallpaper()
-  const [activeSource, setActiveSource] = useState<string>('all')
-  const [searchQuery, setSearchQuery] = useState<string>('')
+  const dispatch = useDispatch<AppDispatch>()
+  const { toggleFavorite } = useWallpaper()
+  const { wallpapers, favorites, isLoading, error, searchQuery, filters, pagination } = useSelector((state: RootState) => state.wallpaper)
+  
   const [showFilters, setShowFilters] = useState<boolean>(false)
+  const [activeSource, setActiveSource] = useState<string>('all')
+  const [sorting, setSorting] = useState<string>('date_added')
 
-  // Mock data for testing with real anime wallpaper URLs
-  const mockWallpapers = [
-    {
-      id: '1',
-      url: 'https://w.wallhaven.cc/full/9d/wallhaven-9d7krk.png',
-      title: 'Chainsaw Man',
-      source: 'Wallhaven',
-      isFavorite: favorites.includes('1'),
-    },
-    {
-      id: '2',
-      url: 'https://w.wallhaven.cc/full/z8/wallhaven-z8dg9y.jpg',
-      title: 'Ghibli Landscape',
-      source: 'Wallhaven',
-      isFavorite: favorites.includes('2'),
-    },
-    {
-      id: '3',
-      url: 'https://w.wallhaven.cc/full/57/wallhaven-57ey75.jpg',
-      title: 'Demon Slayer',
-      source: 'Wallhaven',
-      isFavorite: favorites.includes('3'),
-    },
-    {
-      id: '4',
-      url: 'https://w.wallhaven.cc/full/l3/wallhaven-l3xk6q.jpg',
-      title: 'Jujutsu Kaisen',
-      source: 'Wallhaven',
-      isFavorite: favorites.includes('4'),
-    },
-    {
-      id: '5',
-      url: 'https://w.wallhaven.cc/full/4o/wallhaven-4okyv7.jpg',
-      title: 'Your Name',
-      source: 'Wallhaven',
-      isFavorite: favorites.includes('5'),
-    },
-    {
-      id: '6',
-      url: 'https://w.wallhaven.cc/full/73/wallhaven-7393my.png',
-      title: 'Cyberpunk Edgerunners',
-      source: 'Wallhaven',
-      isFavorite: favorites.includes('6'),
-    },
-    {
-      id: '7',
-      url: 'https://w.wallhaven.cc/full/x6/wallhaven-x68mv3.jpg',
-      title: 'Attack on Titan',
-      source: 'Danbooru',
-      isFavorite: favorites.includes('7'),
-    },
-    {
-      id: '8',
-      url: 'https://w.wallhaven.cc/full/85/wallhaven-85jjoo.jpg',
-      title: 'One Punch Man',
-      source: 'Danbooru',
-      isFavorite: favorites.includes('8'),
-    },
-  ]
+  // Fetch wallpapers on component mount
+  useEffect(() => {
+    handleFetchWallpapers()
+  }, [])
 
-  const filteredWallpapers = mockWallpapers.filter(wallpaper => {
-    // Filter by source
-    if (activeSource !== 'all' && wallpaper.source !== activeSource) {
-      return false
+  // Fetch wallpapers when pagination changes
+  useEffect(() => {
+    if (pagination.currentPage > 0) {
+      handleFetchWallpapers()
+    }
+  }, [pagination.currentPage])
+
+  const handleFetchWallpapers = () => {
+    if (sorting === 'random') {
+      dispatch(fetchRandomWallpapers())
+    } else if (sorting === 'toplist') {
+      dispatch(fetchTopWallpapers('1M'))
+    } else {
+      dispatch(fetchWallpapers())
+    }
+  }
+
+  const handleSearch = (query: string) => {
+    dispatch(setSearchQuery(query))
+    dispatch(setPage(1))
+    dispatch(fetchWallpapers())
+  }
+
+  const handleSourceFilter = (source: string) => {
+    setActiveSource(source)
+    
+    if (source === 'all') {
+      dispatch(setFilters({ source: [WallpaperSource.WALLHAVEN] }))
+    } else if (source === 'wallhaven') {
+      dispatch(setFilters({ source: [WallpaperSource.WALLHAVEN] }))
     }
     
-    // Filter by search query
-    if (searchQuery && !wallpaper.title.toLowerCase().includes(searchQuery.toLowerCase())) {
-      return false
-    }
+    dispatch(setPage(1))
+    dispatch(fetchWallpapers())
+  }
+
+  const handleSortingChange = (sort: string) => {
+    setSorting(sort)
     
-    return true
-  })
+    if (sort === 'random') {
+      dispatch(fetchRandomWallpapers())
+    } else if (sort === 'toplist') {
+      dispatch(fetchTopWallpapers('1M'))
+    } else {
+      dispatch(fetchWallpapers())
+    }
+  }
+
+  const handleFavoriteToggle = (id: string) => {
+    toggleFavorite(id)
+  }
+
+  const handlePageChange = (page: number) => {
+    dispatch(setPage(page))
+  }
 
   return (
     <div className="space-y-6">
@@ -99,11 +93,11 @@ export function Home() {
                 placeholder="Search wallpapers..."
                 className="w-full rounded-lg border bg-background pl-10 pr-4 py-2 focus:outline-none focus:ring-2 focus:ring-primary"
                 value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
+                onChange={(e) => handleSearch(e.target.value)}
               />
               {searchQuery && (
                 <button 
-                  onClick={() => setSearchQuery('')}
+                  onClick={() => handleSearch('')}
                   className="absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground hover:text-foreground"
                 >
                   <X className="h-4 w-4" />
@@ -131,51 +125,145 @@ export function Home() {
                   <div className="space-y-2">
                     <h4 className="text-sm text-muted-foreground">Rating</h4>
                     <div className="grid grid-cols-2 gap-2">
-                      <Button variant="outline" size="sm">SFW</Button>
-                      <Button variant="outline" size="sm">NSFW</Button>
+                      <Button 
+                        variant="outline" 
+                        size="sm"
+                        data-active={filters.rating === 'sfw'}
+                        className={filters.rating === 'sfw' ? 'bg-primary text-primary-foreground' : ''}
+                        onClick={() => dispatch(setFilters({ rating: 'sfw' }))}
+                      >
+                        SFW
+                      </Button>
+                      <Button 
+                        variant="outline" 
+                        size="sm"
+                        data-active={filters.rating === 'nsfw'}
+                        className={filters.rating === 'nsfw' ? 'bg-primary text-primary-foreground' : ''}
+                        onClick={() => dispatch(setFilters({ rating: 'nsfw' }))}
+                      >
+                        NSFW
+                      </Button>
                     </div>
                   </div>
                   <div className="space-y-2">
                     <h4 className="text-sm text-muted-foreground">Sort By</h4>
                     <div className="grid grid-cols-2 gap-2">
-                      <Button variant="outline" size="sm">Latest</Button>
-                      <Button variant="outline" size="sm">Popular</Button>
+                      <Button 
+                        variant="outline" 
+                        size="sm"
+                        data-active={sorting === 'date_added'}
+                        className={sorting === 'date_added' ? 'bg-primary text-primary-foreground' : ''}
+                        onClick={() => handleSortingChange('date_added')}
+                      >
+                        Latest
+                      </Button>
+                      <Button 
+                        variant="outline" 
+                        size="sm"
+                        data-active={sorting === 'toplist'}
+                        className={sorting === 'toplist' ? 'bg-primary text-primary-foreground' : ''}
+                        onClick={() => handleSortingChange('toplist')}
+                      >
+                        Popular
+                      </Button>
+                      <Button 
+                        variant="outline" 
+                        size="sm"
+                        data-active={sorting === 'random'}
+                        className={sorting === 'random' ? 'bg-primary text-primary-foreground' : ''}
+                        onClick={() => handleSortingChange('random')}
+                      >
+                        Random
+                      </Button>
                     </div>
                   </div>
+                  <Button 
+                    className="w-full" 
+                    onClick={() => {
+                      setShowFilters(false)
+                      dispatch(setPage(1))
+                      dispatch(fetchWallpapers())
+                    }}
+                  >
+                    Apply Filters
+                  </Button>
                 </div>
               </PopoverContent>
             </Popover>
           </div>
         </div>
         
-        <Tabs defaultValue="all" value={activeSource} onValueChange={setActiveSource} className="w-full">
+        <Tabs defaultValue="all" value={activeSource} onValueChange={handleSourceFilter} className="w-full">
           <TabsList className="w-full justify-start">
             <TabsTrigger value="all">All Sources</TabsTrigger>
-            <TabsTrigger value="Wallhaven">Wallhaven</TabsTrigger>
-            <TabsTrigger value="Danbooru">Danbooru</TabsTrigger>
-            <TabsTrigger value="AniList">AniList</TabsTrigger>
+            <TabsTrigger value="wallhaven">Wallhaven</TabsTrigger>
+            <TabsTrigger value="danbooru">Danbooru</TabsTrigger>
+            <TabsTrigger value="anilist">AniList</TabsTrigger>
           </TabsList>
         </Tabs>
       </div>
       
-      {filteredWallpapers.length > 0 ? (
-        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4">
-          {filteredWallpapers.map((wallpaper) => (
-            <WallpaperCard
-              key={wallpaper.id}
-              id={wallpaper.id}
-              url={wallpaper.url}
-              title={wallpaper.title}
-              source={wallpaper.source}
-              isFavorite={wallpaper.isFavorite}
-            />
-          ))}
+      {/* Loading state */}
+      {isLoading && (
+        <div className="flex h-40 items-center justify-center">
+          <Loader2 className="h-8 w-8 animate-spin text-primary" />
+          <span className="ml-2">Loading wallpapers...</span>
         </div>
-      ) : (
+      )}
+      
+      {/* Error state */}
+      {error && !isLoading && (
+        <div className="flex h-40 items-center justify-center rounded-lg border border-destructive bg-destructive/10 p-4 text-destructive">
+          <p>{error}</p>
+        </div>
+      )}
+      
+      {/* Results */}
+      {!isLoading && !error && wallpapers.length > 0 ? (
+        <>
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4">
+            {wallpapers.map((wallpaper) => (
+              <WallpaperCard
+                key={wallpaper.id}
+                id={wallpaper.id}
+                url={wallpaper.url}
+                title={wallpaper.title}
+                source={wallpaper.source}
+                isFavorite={favorites.includes(wallpaper.id)}
+              />
+            ))}
+          </div>
+          
+          {/* Pagination */}
+          {pagination.totalPages > 1 && (
+            <div className="flex items-center justify-center space-x-2 py-4">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => handlePageChange(pagination.currentPage - 1)}
+                disabled={pagination.currentPage <= 1}
+              >
+                Previous
+              </Button>
+              <span className="text-sm font-medium">
+                Page {pagination.currentPage} of {pagination.totalPages}
+              </span>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => handlePageChange(pagination.currentPage + 1)}
+                disabled={pagination.currentPage >= pagination.totalPages}
+              >
+                Next
+              </Button>
+            </div>
+          )}
+        </>
+      ) : !isLoading && !error ? (
         <div className="flex h-40 items-center justify-center rounded-lg border border-dashed">
           <p className="text-muted-foreground">No wallpapers found. Try adjusting your filters.</p>
         </div>
-      )}
+      ) : null}
     </div>
   )
 } 

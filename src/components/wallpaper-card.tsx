@@ -2,24 +2,31 @@ import { useState } from 'react'
 import { Heart, Download } from 'lucide-react'
 import { useWallpaper } from '../hooks/useWallpaper'
 import { WallpaperDetail } from './wallpaper-detail'
+import { WallpaperSource } from '../types/wallpaper'
 
 interface WallpaperCardProps {
   id: string
   url: string
   title: string
-  source: string
+  source: WallpaperSource | string
   isFavorite: boolean
 }
 
 export default function WallpaperCard({ id, url, title, source, isFavorite }: WallpaperCardProps) {
-  const { setWallpaper, handleFavorite } = useWallpaper()
+  const { setWallpaper, toggleFavorite, getWallpaperDetails } = useWallpaper()
   const [showDetail, setShowDetail] = useState(false)
+
+  const handleShowDetail = () => {
+    // Fetch detailed information about the wallpaper before showing the detail view
+    getWallpaperDetails(id)
+    setShowDetail(true)
+  }
 
   return (
     <>
       <div 
         className="group relative overflow-hidden rounded-lg border bg-card cursor-pointer"
-        onClick={() => setShowDetail(true)}
+        onClick={handleShowDetail}
       >
         <img
           src={url}
@@ -35,7 +42,7 @@ export default function WallpaperCard({ id, url, title, source, isFavorite }: Wa
             <button
               onClick={(e) => {
                 e.stopPropagation()
-                handleFavorite(id)
+                toggleFavorite(id)
               }}
               className="rounded-full bg-black/50 p-2 text-white transition-colors hover:bg-black/70"
             >

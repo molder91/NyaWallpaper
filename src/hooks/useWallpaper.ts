@@ -1,41 +1,39 @@
 import { useCallback } from 'react'
 import { useDispatch, useSelector } from 'react-redux'
-import { RootState } from '../store'
-import { toggleFavorite, addToRecent, updateSettings } from '../store/wallpaperSlice'
+import { RootState, AppDispatch } from '../store'
+import { toggleFavorite as toggleFavoriteAction, fetchWallpaperDetails } from '../store/wallpaperSlice'
 
 export function useWallpaper() {
-  const dispatch = useDispatch()
-  const { wallpapers, favorites, recent, settings } = useSelector((state: RootState) => state.wallpaper)
+  const dispatch = useDispatch<AppDispatch>()
+  const { wallpapers, favorites, currentWallpaper, isLoading, error } = useSelector((state: RootState) => state.wallpaper)
 
   const setWallpaper = useCallback(async (url: string) => {
     try {
       // @ts-ignore - electron is available in the window object
       const result = await window.electron.ipcRenderer.invoke('set-wallpaper', url)
-      if (result.success) {
-        dispatch(addToRecent(url))
-      }
       return result
     } catch (error) {
       console.error('Failed to set wallpaper:', error)
       return { success: false, error }
     }
+  }, [])
+
+  const toggleFavorite = useCallback((id: string) => {
+    dispatch(toggleFavoriteAction(id))
   }, [dispatch])
 
-  const handleFavorite = useCallback((id: string) => {
-    dispatch(toggleFavorite(id))
-  }, [dispatch])
-
-  const updateWallpaperSettings = useCallback((newSettings: Partial<typeof settings>) => {
-    dispatch(updateSettings(newSettings))
+  const getWallpaperDetails = useCallback((id: string) => {
+    dispatch(fetchWallpaperDetails(id))
   }, [dispatch])
 
   return {
     wallpapers,
     favorites,
-    recent,
-    settings,
+    currentWallpaper,
+    isLoading,
+    error,
     setWallpaper,
-    handleFavorite,
-    updateWallpaperSettings,
+    toggleFavorite,
+    getWallpaperDetails,
   }
 } 
